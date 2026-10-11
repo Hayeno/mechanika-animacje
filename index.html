@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Walizka i sanki</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* Układ: nagłówek, dwie zakładki; w każdej scena animacji po lewej, suwaki i wzory na żywo po prawej (na telefonie jedno pod drugim). */
+  :root {
+    --bg: #F1F4F6;
+    --surface: #FFFFFF;
+    --fg: #15212B;
+    --muted: #586875;
+    --line: #CBD6DD;
+    --ground: #E3EAEE;
+    --accent: #0E6A88;
+    --obj: #52687A;
+    --f-total: #C4352A;
+    --f-x: #1565C0;
+    --f-y: #A86A0C;
+    --f-n: #2A7C58;
+    --f-t: #8A3FB5;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0F171E; --surface: #17222B; --fg: #E5ECF1; --muted: #92A2AF; --line: #2B3B47;
+      --ground: #223039; --accent: #55B8D8; --obj: #8197AA;
+      --f-total: #FF7C6D; --f-x: #6CB1FF; --f-y: #F0B84C; --f-n: #5FCB9B; --f-t: #C99DFF;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0F171E; --surface: #17222B; --fg: #E5ECF1; --muted: #92A2AF; --line: #2B3B47;
+    --ground: #223039; --accent: #55B8D8; --obj: #8197AA;
+    --f-total: #FF7C6D; --f-x: #6CB1FF; --f-y: #F0B84C; --f-n: #5FCB9B; --f-t: #C99DFF;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--fg); font-family: var(--sans);
+    font-size: 15px; line-height: 1.5; padding-inline: 16px; padding-block: 20px 40px;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+  h1 { font-size: clamp(26px, 5vw, 36px); line-height: 1.1; margin: 0 0 8px; font-weight: 600; text-wrap: balance; }
+  .lead { color: var(--muted); max-width: 62ch; margin: 0 0 18px; }
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .tab {
+    font: 500 14px var(--sans); color: var(--fg); background: transparent; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 8px; padding: 9px 14px;
+  }
+  .tab:hover { border-color: var(--accent); }
+  .tab[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  :root[data-theme="dark"] .tab[aria-selected="true"] { color: #07202B; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tab[aria-selected="true"] { color: #07202B; } }
+  .tab:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .panel { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+  .panel[hidden] { display: none; }
+  @media (max-width: 860px) { .panel { grid-template-columns: minmax(0, 1fr); } }
+  .stage { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  canvas { display: block; width: 100%; }
+  .side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .card h2 { font-size: 12px; font-family: var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; font-weight: 500; }
+  .ctl { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; margin-bottom: 10px; }
+  .ctl label { font-weight: 500; }
+  .ctl output { font-family: var(--mono); font-size: 14px; }
+  .ctl input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+  .btn {
+    font: 500 14px var(--sans); color: var(--fg); background: transparent; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  :root[data-theme="dark"] .btn.primary { color: #07202B; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn.primary { color: #07202B; } }
+  .rows { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-variant-numeric: tabular-nums; }
+  .rows dt { color: var(--muted); }
+  .rows dd { margin: 0; font-family: var(--mono); font-size: 13.5px; text-align: right; overflow-wrap: anywhere; }
+  .rows dd b { font-weight: 500; }
+  .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: baseline; }
+  .pill { display: inline-block; font: 500 13px var(--sans); padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); }
+  .pill.go { border-color: var(--f-total); color: var(--f-total); }
+  .pill.stay { border-color: var(--f-n); color: var(--f-n); }
+  .notes { margin: 0; padding-left: 18px; color: var(--muted); max-width: 62ch; }
+  .notes li { margin-bottom: 6px; }
+  .notes li:last-child { margin-bottom: 0; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--muted); padding: 10px 14px; border-top: 1px solid var(--line); }
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+
+<main class="wrap">
+  <p class="eyebrow">Mechanika techniczna · notatki 1</p>
+  <h1>Walizka i sanki</h1>
+  <p class="lead">Dwie animacje do punktów 3 i 5 notatek. Przesuwaj suwaki i patrz, jak zmienia się rozkład siły na składowe.</p>
+
+  <div class="tabs" role="tablist" aria-label="Animacje">
+    <button class="tab" role="tab" id="t-walizka" aria-controls="p-walizka" aria-selected="true">3 · Walizka na kółkach</button>
+    <button class="tab" role="tab" id="t-sanki" aria-controls="p-sanki" aria-selected="false">5 · Sanki na równi</button>
+  </div>
+
+  <section class="panel" id="p-walizka" role="tabpanel" aria-labelledby="t-walizka">
+    <div class="stage">
+      <canvas id="cv-walizka" role="img" aria-label="Walizka ciągnięta za rączkę. Siła F rozłożona na składową poziomą Fx i pionową Fy."></canvas>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--f-total)"></i>siła F wzdłuż rączki</span>
+        <span><i class="sw" style="background:var(--f-x)"></i>Fx: ciągnie do przodu</span>
+        <span><i class="sw" style="background:var(--f-y)"></i>Fy: unosi do góry</span>
+      </div>
+    </div>
+    <div class="side">
+      <div class="card">
+        <h2>Ustawienia</h2>
+        <div class="ctl"><label for="w-F">Siła F</label><output id="w-F-o"></output>
+          <input type="range" id="w-F" min="0" max="40" step="1" value="20"></div>
+        <div class="ctl"><label for="w-a">Kąt rączki α</label><output id="w-a-o"></output>
+          <input type="range" id="w-a" min="0" max="90" step="1" value="30"></div>
+        <div class="btns">
+          <button class="btn primary" id="w-split" type="button">Rozłóż siłę</button>
+          <button class="btn" id="w-play" type="button">Pauza</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Rachunek na żywo</h2>
+        <dl class="rows" id="w-rows"></dl>
+      </div>
+      <ul class="notes">
+        <li>Siła F ciągnie wzdłuż rączki. Rozkładasz ją na Fx, która ciągnie walizkę do przodu, i Fy, która ją unosi.</li>
+        <li>Zmniejsz α: rączka kładzie się poziomo i prawie cała siła idzie do przodu (cos 0° = 1).</li>
+        <li>Zwiększ α: rączka staje pionowo i walizka prawie przestaje jechać (cos 90° = 0).</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="panel" id="p-sanki" role="tabpanel" aria-labelledby="t-sanki" hidden>
+    <div class="stage">
+      <canvas id="cv-sanki" role="img" aria-label="Sanki na równi pochyłej. Ciężar G rozłożony na składową zsuwającą Gx i dociskającą Gy, reakcja N i tarcie T."></canvas>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--f-total)"></i>G = m·g (pionowo w dół)</span>
+        <span><i class="sw" style="background:var(--f-x)"></i>Gx: zsuwa</span>
+        <span><i class="sw" style="background:var(--f-y)"></i>Gy: dociska</span>
+        <span><i class="sw" style="background:var(--f-n)"></i>N: reakcja równi</span>
+        <span><i class="sw" style="background:var(--f-t)"></i>T: tarcie</span>
+      </div>
+    </div>
+    <div class="side">
+      <div class="card">
+        <h2>Ustawienia</h2>
+        <div class="ctl"><label for="s-m">Masa m</label><output id="s-m-o"></output>
+          <input type="range" id="s-m" min="2" max="15" step="1" value="10"></div>
+        <div class="ctl"><label for="s-a">Kąt równi α</label><output id="s-a-o"></output>
+          <input type="range" id="s-a" min="0" max="60" step="1" value="30"></div>
+        <div class="ctl"><label for="s-mu">Tarcie μ</label><output id="s-mu-o"></output>
+          <input type="range" id="s-mu" min="0" max="0.8" step="0.05" value="0.2"></div>
+        <div class="btns">
+          <button class="btn primary" id="s-reset" type="button">Od nowa</button>
+          <button class="btn" id="s-play" type="button">Pauza</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Rachunek na żywo</h2>
+        <p style="margin:0 0 10px"><span class="pill" id="s-state"></span></p>
+        <dl class="rows" id="s-rows"></dl>
+      </div>
+      <ul class="notes">
+        <li>Ciężar G zawsze działa pionowo w dół. Równia rozkłada go na Gx (zsuwa) i Gy (dociska).</li>
+        <li>Reakcja N równoważy Gy. Tarcie T hamuje zsuwanie. Gdy tg α ≤ μ, tarcie wygrywa i sanki stoją.</li>
+        <li>Ustaw α = 0°: sanki nie jadą. Ustaw μ = 0: zsuwają się z przyspieszeniem g·sin α.</li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  var G0 = 9.81, SANS = '"IBM Plex Sans", system-ui, sans-serif', MONO = '"IBM Plex Mono", ui-monospace, monospace';
+  var LW = 560, LH = 420; // wymiary sceny logicznej
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function $(id) { return document.getElementById(id); }
+  function fmt(x, d) { return x.toLocaleString('pl-PL', { minimumFractionDigits: d, maximumFractionDigits: d }); }
+  function rad(d) { return d * Math.PI / 180; }
+
+  function palette() {
+    var cs = getComputedStyle(document.documentElement), g = function (n) { return cs.getPropertyValue(n).trim(); };
+    return { surface: g('--surface'), fg: g('--fg'), muted: g('--muted'), line: g('--line'), ground: g('--ground'),
+      obj: g('--obj'), tot: g('--f-total'), fx: g('--f-x'), fy: g('--f-y'), n: g('--f-n'), t: g('--f-t'), accent: g('--accent') };
+  }
+
+  /* ---------- rysowanie: pomocnicze ---------- */
+  var S = 1, P = null;
+  function arrow(c, x0, y0, x1, y1, color, w, dash) {
+    var dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy);
+    if (L < 1.5) return;
+    var ux = dx / L, uy = dy / L, h = Math.min(11, L * 0.55);
+    c.save(); c.strokeStyle = color; c.fillStyle = color; c.lineWidth = w;
+    if (dash) c.setLineDash(dash);
+    c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1 - ux * h * 0.7, y1 - uy * h * 0.7); c.stroke();
+    c.setLineDash([]);
+    c.beginPath(); c.moveTo(x1, y1);
+    c.lineTo(x1 - ux * h - uy * h * 0.42, y1 - uy * h + ux * h * 0.42);
+    c.lineTo(x1 - ux * h + uy * h * 0.42, y1 - uy * h - ux * h * 0.42);
+    c.closePath(); c.fill(); c.restore();
+  }
+  // etykieta: nazwa + indeks dolny + tekst dodatkowy (mono)
+  function tag(c, base, sub, after, x, y, color, align) {
+    var fs = 14 / S;
+    c.save(); c.textBaseline = 'middle'; c.textAlign = 'left'; c.lineJoin = 'round';
+    c.font = '600 ' + fs + 'px ' + SANS; var bw = c.measureText(base).width;
+    c.font = '600 ' + (fs * 0.72) + 'px ' + SANS; var sw = sub ? c.measureText(sub).width : 0;
+    c.font = '500 ' + (fs * 0.93) + 'px ' + MONO; var aw = after ? c.measureText(after).width : 0;
+    var tot = bw + sw + aw, x0 = align === 'center' ? x - tot / 2 : (align === 'right' ? x - tot : x);
+    c.lineWidth = 4 / S; c.strokeStyle = P.surface; c.fillStyle = color;
+    c.font = '600 ' + fs + 'px ' + SANS; c.strokeText(base, x0, y); c.fillText(base, x0, y);
+    if (sub) { c.font = '600 ' + (fs * 0.72) + 'px ' + SANS; c.strokeText(sub, x0 + bw, y + fs * 0.28); c.fillText(sub, x0 + bw, y + fs * 0.28); }
+    if (after) { c.font = '500 ' + (fs * 0.93) + 'px ' + MONO; c.strokeText(after, x0 + bw + sw, y); c.fillText(after, x0 + bw + sw, y); }
+    c.restore();
+  }
+  function plain(c, str, x, y, color, align, size) {
+    c.save(); c.textBaseline = 'middle'; c.textAlign = align || 'left'; c.lineJoin = 'round';
+    c.font = '500 ' + ((size || 12.5) / S) + 'px ' + SANS; c.lineWidth = 4 / S; c.strokeStyle = P.surface; c.fillStyle = color;
+    c.strokeText(str, x, y); c.fillText(str, x, y); c.restore();
+  }
+
+  function setup(cv) {
+    var w = cv.parentElement.clientWidth || 560, h = Math.round(w * LH / LW), d = window.devicePixelRatio || 1;
+    cv.style.height = h + 'px'; cv.width = Math.round(w * d); cv.height = Math.round(h * d);
+    return { w: w, h: h, d: d };
+  }
+
+  /* ---------- animacja 1: walizka ---------- */
+  var W = { F: 20, a: 30, d: 1, splitting: false, off: 0, phi: 0, run: !reduce };
+  var wCv = $('cv-walizka'), wC = wCv.getContext('2d'), wSize = null;
+
+  function wRows() {
+    var a = rad(W.a), cx = Math.cos(a), sn = Math.sin(a), fx = W.F * cx, fy = W.F * sn;
+    $('w-F-o').textContent = fmt(W.F, 0) + ' N';
+    $('w-a-o').textContent = fmt(W.a, 0) + '°';
+    $('w-rows').innerHTML =
+      '<dt>Fx = F·cos α</dt><dd><b>' + fmt(W.F, 0) + ' · ' + fmt(cx, 3) + ' = ' + fmt(fx, 1) + ' N</b></dd>' +
+      '<dt>Fy = F·sin α</dt><dd><b>' + fmt(W.F, 0) + ' · ' + fmt(sn, 3) + ' = ' + fmt(fy, 1) + ' N</b></dd>' +
+      '<dt>Kontrola</dt><dd>√(Fx² + Fy²) = ' + fmt(Math.hypot(fx, fy), 1) + ' N</dd>';
+  }
+
+  function drawWalizka(dt) {
+    var c = wC, a = rad(W.a), k = 2.8;
+    var fx = W.F * Math.cos(a), fy = W.F * Math.sin(a);
+    if (W.run) { W.off += fx * 7 * dt; W.phi += (fx * 7 * dt) / 9; }
+    if (W.splitting && W.run !== null) { W.d = Math.min(1, W.d + dt / 1.5); if (W.d >= 1) W.splitting = false; }
+
+    c.clearRect(0, 0, LW, LH);
+    var gy = 370;
+    // podłoga i znaczniki przesuwające się w lewo
+    c.fillStyle = P.ground; c.fillRect(0, gy, LW, LH - gy);
+    c.strokeStyle = P.line; c.lineWidth = 1.5; c.beginPath(); c.moveTo(0, gy); c.lineTo(LW, gy); c.stroke();
+    var sp = 44, sh = W.off % sp;
+    for (var x = -sh; x < LW + sp; x += sp) { c.beginPath(); c.moveTo(x, gy + 10); c.lineTo(x - 14, gy + 24); c.stroke(); }
+    plain(c, 'kierunek jazdy →', LW - 14, gy + 34, P.muted, 'right');
+
+    // walizka
+    var cxs = 120, top = gy - 82, bx = cxs + 34;
+    c.fillStyle = P.obj; c.strokeStyle = P.fg; c.lineWidth = 2;
+    c.beginPath(); c.roundRect ? c.roundRect(cxs - 48, top, 96, 64, 9) : c.rect(cxs - 48, top, 96, 64); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(cxs - 28, top + 8); c.lineTo(cxs - 28, top + 56); c.moveTo(cxs, top + 8); c.lineTo(cxs, top + 56); c.moveTo(cxs + 28, top + 8); c.lineTo(cxs + 28, top + 56); c.stroke();
+    // kółka
+    [-30, 30].forEach(function (dx) {
+      var wx = cxs + dx, wy = gy - 9;
+      c.fillStyle = P.fg; c.beginPath(); c.arc(wx, wy, 9, 0, 6.2832); c.fill();
+      c.strokeStyle = P.surface; c.lineWidth = 2;
+      for (var i = 0; i < 3; i++) { var an = W.phi + i * 2.0944; c.beginPath(); c.moveTo(wx, wy); c.lineTo(wx - Math.cos(an) * 7, wy + Math.sin(an) * 7); c.stroke(); }
+    });
+    // rączka
+    var gx = bx + 120 * Math.cos(a), gyp = top - 120 * Math.sin(a);
+    c.strokeStyle = P.fg; c.lineWidth = 5; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(bx, top); c.lineTo(gx, gyp); c.stroke();
+    c.fillStyle = P.fg; c.beginPath(); c.arc(gx, gyp, 7, 0, 6.2832); c.fill();
+    c.lineCap = 'butt';
+
+    // kąt α
+    c.strokeStyle = P.muted; c.lineWidth = 1.2; c.setLineDash([4, 4]);
+    c.beginPath(); c.moveTo(bx, top); c.lineTo(bx + 70, top); c.stroke(); c.setLineDash([]);
+    if (W.a > 1) {
+      c.beginPath(); c.arc(bx, top, 42, -a, 0); c.stroke();
+      tag(c, 'α', '', ' ' + fmt(W.a, 0) + '°', bx + 48 * Math.cos(a / 2), top - 48 * Math.sin(a / 2) + (W.a < 18 ? -10 : 0), P.fg, 'left');
+    }
+
+    // siła F i składowe (rosną po kolei podczas rozkładania)
+    var d = W.d, fxs = Math.max(0, Math.min(1, d * 2)), fys = Math.max(0, Math.min(1, d * 2 - 1));
+    var tx = gx + W.F * k * Math.cos(a), ty = gyp - W.F * k * Math.sin(a);
+    var xe = gx + fx * k * fxs, ye = gyp - fy * k * fys;
+    if (d > 0.5 && W.F > 0) {
+      c.strokeStyle = P.muted; c.lineWidth = 1.2; c.setLineDash([5, 4]);
+      c.beginPath(); c.moveTo(gx + fx * k, gyp); c.lineTo(tx, ty); c.moveTo(gx, gyp - fy * k * fys); c.lineTo(gx + fx * k, gyp - fy * k * fys); c.stroke(); c.setLineDash([]);
+    }
+    arrow(c, gx, gyp, tx, ty, P.tot, 3);
+    arrow(c, gx, gyp, gx + fx * k * fxs, gyp, P.fx, 3);
+    arrow(c, gx, gyp, gx, gyp - fy * k * fys, P.fy, 3);
+    if (W.F > 0) {
+      tag(c, 'F', '', ' = ' + fmt(W.F, 0) + ' N', tx + 10, ty - 8, P.tot, 'left');
+      if (fxs > 0.95 && fx > 0.4) tag(c, 'F', 'x', ' = ' + fmt(fx, 1) + ' N', gx + fx * k / 2, gyp + 20, P.fx, 'center');
+      if (fys > 0.95 && fy > 0.4) tag(c, 'F', 'y', ' = ' + fmt(fy, 1) + ' N', gx - 10, gyp - fy * k / 2, P.fy, 'right');
+    }
+  }
+
+  /* ---------- animacja 2: sanki na równi ---------- */
+  var Sm = { m: 10, a: 30, mu: 0.2, s: 0, v: 0, phase: 'wait', timer: 0, run: !reduce };
+  var sCv = $('cv-sanki'), sC = sCv.getContext('2d'), sSize = null;
+  var LS = 380, AX = 50, AY = 380, SPM = LS / 6; // 6 m równi
+
+  function sPhys() {
+    var a = rad(Sm.a), G = Sm.m * G0, Gx = G * Math.sin(a), Gy = G * Math.cos(a);
+    var slides = Math.sin(a) - Sm.mu * Math.cos(a) > 1e-9;
+    var T = slides ? Sm.mu * Gy : Gx;
+    var acc = slides ? G0 * (Math.sin(a) - Sm.mu * Math.cos(a)) : 0;
+    return { a: a, G: G, Gx: Gx, Gy: Gy, N: Gy, T: T, acc: acc, slides: slides };
+  }
+  function sReset() { Sm.s = LS - 60; Sm.v = 0; Sm.phase = 'wait'; Sm.timer = 0.6; }
+
+  function sRows() {
+    var p = sPhys();
+    $('s-m-o').textContent = fmt(Sm.m, 0) + ' kg';
+    $('s-a-o').textContent = fmt(Sm.a, 0) + '°';
+    $('s-mu-o').textContent = fmt(Sm.mu, 2);
+    var st = $('s-state');
+    st.textContent = p.slides ? 'Sanki zsuwają się' : 'Sanki stoją, tarcie je trzyma';
+    st.className = 'pill ' + (p.slides ? 'go' : 'stay');
+    $('s-rows').innerHTML =
+      '<dt><i class="sw" style="background:var(--f-total)"></i>G = m·g</dt><dd>' + fmt(Sm.m, 0) + ' · 9,81 = <b>' + fmt(p.G, 1) + ' N</b></dd>' +
+      '<dt><i class="sw" style="background:var(--f-x)"></i>Gx = G·sin α</dt><dd><b>' + fmt(p.Gx, 2) + ' N</b></dd>' +
+      '<dt><i class="sw" style="background:var(--f-y)"></i>Gy = G·cos α</dt><dd><b>' + fmt(p.Gy, 2) + ' N</b></dd>' +
+      '<dt><i class="sw" style="background:var(--f-n)"></i>N = Gy</dt><dd><b>' + fmt(p.N, 2) + ' N</b></dd>' +
+      '<dt><i class="sw" style="background:var(--f-t)"></i>' + (p.slides ? 'T = μ·N' : 'T = Gx') + '</dt><dd><b>' + fmt(p.T, 2) + ' N</b></dd>' +
+      '<dt>a</dt><dd><b>' + fmt(p.acc, 2) + ' m/s²</b></dd>';
+  }
+
+  function drawSanki(dt) {
+    var c = sC, p = sPhys(), a = p.a, ca = Math.cos(a), sa = Math.sin(a);
+    // symulacja
+    if (Sm.run) {
+      if (Sm.phase === 'wait') { Sm.timer -= dt; if (Sm.timer <= 0) Sm.phase = p.slides ? 'run' : 'idle'; }
+      else if (Sm.phase === 'run') {
+        Sm.v += p.acc * dt; Sm.s -= Sm.v * SPM * dt;
+        if (Sm.s <= 46) { Sm.s = 46; Sm.phase = 'end'; Sm.timer = 1.1; }
+      } else if (Sm.phase === 'end') { Sm.timer -= dt; if (Sm.timer <= 0) sReset(); }
+      else if (Sm.phase === 'idle' && p.slides) { Sm.phase = 'run'; }
+    }
+    c.clearRect(0, 0, LW, LH);
+    var bxp = AX + LS * ca, byp = AY - LS * sa;
+    // trójkąt równi
+    c.fillStyle = P.ground; c.beginPath(); c.moveTo(AX, AY); c.lineTo(bxp, byp); c.lineTo(bxp, AY); c.closePath(); c.fill();
+    c.strokeStyle = P.line; c.lineWidth = 1.2; c.setLineDash([5, 4]);
+    c.beginPath(); c.moveTo(bxp, byp); c.lineTo(bxp, AY); c.stroke(); c.setLineDash([]);
+    c.strokeStyle = P.fg; c.lineWidth = 3; c.beginPath(); c.moveTo(AX - 30, AY); c.lineTo(bxp + 20, AY); c.stroke();
+    c.lineWidth = 4; c.lineCap = 'round'; c.beginPath(); c.moveTo(AX, AY); c.lineTo(bxp, byp); c.stroke(); c.lineCap = 'butt';
+    // kąt α
+    if (Sm.a > 1) {
+      c.strokeStyle = P.muted; c.lineWidth = 1.2; c.beginPath(); c.arc(AX, AY, 56, -a, 0); c.stroke();
+      tag(c, 'α', '', ' ' + fmt(Sm.a, 0) + '°', AX + 64 * Math.cos(a / 2), AY - 64 * Math.sin(a / 2) - (Sm.a < 14 ? 12 : 0), P.fg, 'left');
+    }
+    // osie układu
+    var ox = 96, oy = 96;
+    arrow(c, ox, oy, ox + 56 * ca, oy - 56 * sa, P.muted, 1.6);
+    arrow(c, ox, oy, ox - 56 * sa, oy - 56 * ca, P.muted, 1.6);
+    plain(c, 'x', ox + 56 * ca + 9, oy - 56 * sa - 3, P.muted, 'left', 13);
+    plain(c, 'y', ox - 56 * sa - 3, oy - 56 * ca - 10, P.muted, 'right', 13);
+
+    // sanki
+    var px = AX + Sm.s * ca, py = AY - Sm.s * sa;
+    c.save(); c.translate(px, py); c.rotate(-a);
+    c.fillStyle = P.obj; c.strokeStyle = P.fg; c.lineWidth = 2;
+    c.beginPath(); c.rect(-34, -27, 68, 17); c.fill();
+    c.strokeStyle = P.surface; c.lineWidth = 1.5; c.beginPath(); c.moveTo(-17, -27); c.lineTo(-17, -10); c.moveTo(0, -27); c.lineTo(0, -10); c.moveTo(17, -27); c.lineTo(17, -10); c.stroke();
+    c.strokeStyle = P.fg; c.lineWidth = 3; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(-38, -3); c.lineTo(38, -3); c.quadraticCurveTo(48, -3, 46, -12); c.stroke();
+    c.beginPath(); c.moveTo(-24, -10); c.lineTo(-24, -3); c.moveTo(24, -10); c.lineTo(24, -3); c.stroke();
+    c.restore(); c.lineCap = 'butt';
+
+    // środek ciężkości i wektory
+    var cx0 = px - 19 * sa, cy0 = py - 19 * ca, kv = 0.9;
+    var Gl = p.G * kv, Gxl = p.Gx * kv, Gyl = p.Gy * kv, Nl = p.N * kv, Tl = p.T * kv;
+    var gxEnd = cx0 - ca * Gxl + 0, gyEnd = cy0 + sa * Gxl;      // Gx: wzdłuż równi w dół
+    var hxEnd = cx0 + sa * Gyl, hyEnd = cy0 + ca * Gyl;           // Gy: w głąb równi
+    c.strokeStyle = P.muted; c.lineWidth = 1.2; c.setLineDash([5, 4]);
+    c.beginPath(); c.moveTo(cx0, cy0 + Gl); c.lineTo(gxEnd, gyEnd); c.moveTo(cx0, cy0 + Gl); c.lineTo(hxEnd, hyEnd); c.stroke(); c.setLineDash([]);
+    arrow(c, cx0, cy0, cx0, cy0 + Gl, P.tot, 3);
+    arrow(c, cx0, cy0, gxEnd, gyEnd, P.fx, 3);
+    arrow(c, cx0, cy0, hxEnd, hyEnd, P.fy, 3);
+    arrow(c, cx0, cy0, cx0 - sa * Nl, cy0 - ca * Nl, P.n, 3);
+    arrow(c, cx0, cy0, cx0 + ca * Tl, cy0 - sa * Tl, P.t, 3);
+    tag(c, 'G', '', '', cx0 + 10, cy0 + Gl + 8, P.tot, 'left');
+    tag(c, 'G', 'x', '', gxEnd - 10, gyEnd + (Sm.a > 3 ? 4 : -12), P.fx, 'right');
+    tag(c, 'G', 'y', '', hxEnd + 9, hyEnd - 6, P.fy, 'left');
+    tag(c, 'N', '', '', cx0 - sa * Nl - 8, cy0 - ca * Nl - 6, P.n, 'right');
+    if (p.T > 0.5) tag(c, 'T', '', '', cx0 + ca * Tl + 8, cy0 - sa * Tl - 8, P.t, 'left');
+  }
+
+  /* ---------- pętla ---------- */
+  var active = 'walizka', last = performance.now();
+  function frame(now) {
+    var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    P = palette();
+    var cv = active === 'walizka' ? wCv : sCv, size = active === 'walizka' ? wSize : sSize;
+    var w = cv.parentElement.clientWidth;
+    if (!size || Math.abs(size.w - w) > 1 || size.d !== (window.devicePixelRatio || 1)) {
+      size = setup(cv); if (active === 'walizka') wSize = size; else sSize = size;
+    }
+    S = size.w / LW;
+    var c = active === 'walizka' ? wC : sC;
+    c.setTransform(size.d * S, 0, 0, size.d * S, 0, 0);
+    if (active === 'walizka') drawWalizka(dt); else drawSanki(dt);
+    requestAnimationFrame(frame);
+  }
+
+  /* ---------- sterowanie ---------- */
+  function show(which) {
+    active = which;
+    ['walizka', 'sanki'].forEach(function (n) {
+      var on = n === which;
+      $('p-' + n).hidden = !on;
+      $('t-' + n).setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    wSize = null; sSize = null;
+    try { if (location.hash !== '#' + which) history.replaceState(null, '', '#' + which); } catch (e) {}
+    if (which === 'sanki') sReset();
+  }
+  $('t-walizka').addEventListener('click', function () { show('walizka'); });
+  $('t-sanki').addEventListener('click', function () { show('sanki'); });
+
+  $('w-F').addEventListener('input', function (e) { W.F = +e.target.value; W.d = 1; W.splitting = false; wRows(); });
+  $('w-a').addEventListener('input', function (e) { W.a = +e.target.value; W.d = 1; W.splitting = false; wRows(); });
+  $('w-split').addEventListener('click', function () { W.d = 0; W.splitting = true; });
+  $('w-play').addEventListener('click', function () { W.run = !W.run; $('w-play').textContent = W.run ? 'Pauza' : 'Start'; });
+
+  ['s-m', 's-a', 's-mu'].forEach(function (id) {
+    $(id).addEventListener('input', function (e) {
+      var v = +e.target.value;
+      if (id === 's-m') Sm.m = v; else if (id === 's-a') Sm.a = v; else Sm.mu = v;
+      sRows(); sReset();
+    });
+  });
+  $('s-reset').addEventListener('click', function () { sReset(); if (!Sm.run) { Sm.run = true; $('s-play').textContent = 'Pauza'; } });
+  $('s-play').addEventListener('click', function () { Sm.run = !Sm.run; $('s-play').textContent = Sm.run ? 'Pauza' : 'Start'; });
+
+  if (reduce) { $('w-play').textContent = 'Start'; $('s-play').textContent = 'Start'; }
+  wRows(); sRows(); sReset();
+  W.d = reduce ? 1 : 0; W.splitting = !reduce;
+  var h0 = (location.hash || '').replace('#', '');
+  show(h0 === 'sanki' ? 'sanki' : 'walizka');
+  requestAnimationFrame(function (t) { last = t; frame(t); });
+})();
+</script>
+
+</body>
+</html>
